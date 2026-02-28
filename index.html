@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可调电荷量 · 可拖动电荷 · 等势面点云</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #111; }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            z-index: 10;
+            pointer-events: none;
+        }
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(20,20,20,0.95);
+            border: 1px solid #444;
+            border-radius: 12px;
+            padding: 20px;
+            color: #eee;
+            width: 280px;
+            z-index: 20;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .control-item {
+            margin-bottom: 15px;
+        }
+        .control-item label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            color: #ccc;
+            font-size: 14px;
+        }
+        .control-item input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            background: #333;
+            accent-color: #7aa5ff;
+        }
+        .control-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #7aa5ff;
+        }
+        .value-display {
+            float: right;
+            color: #7aa5ff;
+            font-weight: 500;
+        }
+        .charge1-color { color: #ffaa33; }
+        .charge2-color { color: #4488ff; }
+        button {
+            background: #2a2a2a;
+            border: 1px solid #555;
+            color: #eee;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #3a3a3a;
+            border-color: #7aa5ff;
+        }
+        .note {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            color: #aaa;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 15;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #333;
+            margin: 15px 0;
+        }
+        .section-title {
+            font-size: 14px;
+            color: #888;
+            margin: 10px 0 5px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2 style="margin:0 0 5px 0;">⚡ 可调电荷量 · 可拖动电荷</h2>
+        <p style="margin:0; color:#aaa;">拖动电荷 | 调节电量 | 等势面点云实时更新</p>
+    </div>
+    <div id="controls">
+        <h3 style="margin:0 0 15px 0; text-align:center;">控制面板</h3>
+        
+        <div class="section-title">电荷可见性</div>
+        <div class="control-item">
+            <label>
+                <span class="charge1-color">●</span> 正电荷
+                <input type="checkbox" id="visCharge1" checked>
+            </label>
+            <label>
+                <span class="charge2-color">●</span> 负电荷
+                <input type="checkbox" id="visCharge2" checked>
+            </label>
+        </div>
+
+        <div class="section-title">电荷量调节</div>
+        <div class="control-item">
+            <label>
+                正电荷电量 <span id="q1Val" class="value-display">+2.0</span>
+                <input type="range" id="q1" min="0.5" max="4.0" step="0.1" value="2.0">
+            </label>
+            <label>
+                负电荷电量 <span id="q2Val" class="value-display">-1.0</span>
+                <input type="range" id="q2" min="-4.0" max="-0.5" step="0.1" value="-1.0">
+            </label>
+            <span style="font-size:11px; color:#888;">负值表示负电荷</span>
+        </div>
+
+        <hr>
+
+        <div class="section-title">等势面点云</div>
+        <div class="control-item">
+            <label>
+                <span style="color:#88ccaa;">◉ 显示点云</span>
+                <input type="checkbox" id="visPoints" checked>
+            </label>
+            <label>
+                点云透明度 <span id="pointOpacityVal" class="value-display">0.35</span>
+                <input type="range" id="pointOpacity" min="0.1" max="0.7" step="0.01" value="0.35">
+            </label>
+            <label>
+                点云大小 <span id="pointSizeVal" class="value-display">0.22</span>
+                <input type="range" id="pointSize" min="0.1" max="0.5" step="0.01" value="0.22">
+            </label>
+        </div>
+
+        <div class="section-title">电场线</div>
+        <div class="control-item">
+            <label>
+                <span style="color:#ff8866;">〰️ 显示电场线</span>
+                <input type="checkbox" id="visLines" checked>
+            </label>
+            <label>
+                线透明度 <span id="lineOpacityVal" class="value-display">0.75</span>
+                <input type="range" id="lineOpacity" min="0.2" max="1.0" step="0.05" value="0.75">
+            </label>
+        </div>
+
+        <hr>
+
+        <div class="control-item">
+            <label>
+                采样密度 <span id="densityVal" class="value-display">0.22</span>
+                <input type="range" id="density" min="0.15" max="0.35" step="0.01" value="0.22">
+            </label>
+        </div>
+
+        <button id="resetView">重置视角</button>
+        <p style="text-align:center; margin:10px 0 0 0; font-size:12px; color:#7aa5ff;">👆 按住电荷球体拖动 | 滑块实时更新场分布</p>
+    </div>
+    <div class="note">电量可调 | 可拖动 | 实时更新</div>
+
+    <!-- 引入 Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { DragControls } from 'three/addons/controls/DragControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- 初始化场景 ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111111);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(8, 5, 12);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // --- 轨道控制器 ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+
+        // --- 灯光 ---
+        const ambientLight = new THREE.AmbientLight(0x909090);
+        scene.add(ambientLight);
+        
+        const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
+        light1.position.set(2, 3, 2);
+        scene.add(light1);
+        
+        const light2 = new THREE.DirectionalLight(0xccddff, 0.5);
+        light2.position.set(-2, 1, 3);
+        scene.add(light2);
+
+        // --- 辅助网格 ---
+        const gridHelper = new THREE.GridHelper(16, 20, 0x444444, 0x333333);
+        gridHelper.position.y = -0.2;
+        scene.add(gridHelper);
+
+        // --- 电荷初始位置 ---
+        let pos1 = new THREE.Vector3(-2.8, 0.3, 0.2);
+        let pos2 = new THREE.Vector3(2.5, -0.2, -0.4);
+        
+        // 初始电荷量
+        let q1 = 2.0;
+        let q2 = -1.0;
+
+        // --- 创建电荷球体 ---
+        function createChargeMesh(position, color, chargeValue) {
+            const geometry = new THREE.SphereGeometry(0.7, 32, 24);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: color, 
+                roughness: 0.3,
+                emissive: new THREE.Color(color).multiplyScalar(0.2)
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.position.copy(position);
+            sphere.userData.isCharge = true;
+            sphere.userData.chargeValue = chargeValue;
+            return sphere;
+        }
+        
+        const charge1 = createChargeMesh(pos1, 0xffaa33, q1);
+        const charge2 = createChargeMesh(pos2, 0x4488ff, q2);
+        scene.add(charge1);
+        scene.add(charge2);
+
+        // --- 标签 (动态显示电量) ---
+        function createLabel(position, getTextFunc, color) {
+            const div = document.createElement('div');
+            div.style.color = '#fff';
+            div.style.fontSize = '16px';
+            div.style.backgroundColor = 'rgba(20,20,20,0.8)';
+            div.style.padding = '2px 12px';
+            div.style.borderRadius = '16px';
+            div.style.border = `1px solid ${color}`;
+            div.style.fontFamily = 'Segoe UI, sans-serif';
+            div.style.transition = '0.1s';
+            const label = new CSS2DObject(div);
+            label.position.copy(position.clone().add(new THREE.Vector3(0, 1.1, 0)));
+            
+            // 存储更新函数
+            label.updateText = function(q) {
+                div.textContent = getTextFunc(q);
+            };
+            label.updateText(0); // 初始占位
+            
+            return label;
+        }
+        
+        const label1 = createLabel(pos1, (q) => q > 0 ? `+${q.toFixed(1)}q` : `${q.toFixed(1)}q`, '#ffaa33');
+        const label2 = createLabel(pos2, (q) => q > 0 ? `+${q.toFixed(1)}q` : `${q.toFixed(1)}q`, '#4488ff');
+        label1.updateText(q1);
+        label2.updateText(q2);
+        scene.add(label1);
+        scene.add(label2);
+
+        // --- 电势计算 (使用当前电量) ---
+        function potential(p, p1, p2, q1, q2) {
+            const r1 = p.distanceTo(p1);
+            const r2 = p.distanceTo(p2);
+            const eps = 0.3;
+            return q1 / Math.max(r1, eps) + q2 / Math.max(r2, eps);
+        }
+
+        // --- 电场计算 (使用当前电量) ---
+        function electricField(p, p1, p2, q1, q2) {
+            const r1 = p.distanceTo(p1);
+            const r2 = p.distanceTo(p2);
+            const eps = 0.2;
+            const dir1 = p.clone().sub(p1).normalize();
+            const dir2 = p.clone().sub(p2).normalize();
+            return dir1.multiplyScalar(q1 / (r1*r1 + eps)).add(dir2.multiplyScalar(q2 / (r2*r2 + eps)));
+        }
+
+        // --- 生成等势面点云 ---
+        function generatePointCloud(p1, p2, q1, q2, step = 0.22) {
+            // 根据电量动态调整等势面层级
+            const maxV = Math.max(Math.abs(q1), Math.abs(q2)) * 1.5;
+            const levels = [
+                maxV * 0.2, maxV * 0.4, maxV * 0.6, maxV * 0.8, maxV * 1.0, maxV * 1.3
+            ].sort((a,b) => a - b);
+            
+            const colors = [
+                new THREE.Color(0x4466aa), // 深蓝
+                new THREE.Color(0x5599cc), // 蓝
+                new THREE.Color(0x66ccaa), // 青绿
+                new THREE.Color(0xccaa66), // 黄
+                new THREE.Color(0xcc8855), // 橙
+                new THREE.Color(0xaa5555)  // 红棕
+            ];
+            
+            const range = 7.0;
+            const threshold = 0.15;
+            
+            const positions = [];
+            const pointColors = [];
+            
+            for (let x = -range; x <= range; x += step) {
+                for (let y = -range; y <= range; y += step) {
+                    for (let z = -range; z <= range; z += step) {
+                        if (Math.sqrt(x*x + y*y + z*z) > 7.2) continue;
+                        
+                        const p = new THREE.Vector3(x, y, z);
+                        const V = potential(p, p1, p2, q1, q2);
+                        
+                        for (let i = 0; i < levels.length; i++) {
+                            if (Math.abs(V - levels[i]) < threshold) {
+                                positions.push(x, y, z);
+                                const c = colors[i % colors.length];
+                                pointColors.push(c.r, c.g, c.b);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            console.log(`生成点云: ${positions.length/3} 个点`);
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(pointColors, 3));
+            
+            const material = new THREE.PointsMaterial({ 
+                size: 0.22,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.35,
+                blending: THREE.NormalBlending,
+                depthWrite: true,
+                sizeAttenuation: true
+            });
+            
+            return new THREE.Points(geometry, material);
+        }
+
+        // --- 生成电场线 (从正电荷出发，如果q1正; 如果两个都负需要特殊处理，这里简单处理) ---
+        function generateFieldLines(p1, p2, q1, q2) {
+            const group = new THREE.Group();
+            const baseColor = 0xff8866;
+            
+            // 确定从哪个电荷出发 (选择正电荷，如果都是负的则从电量大的出发)
+            let startPos, endPos;
+            if (q1 > 0 && q2 < 0) {
+                startPos = p1;
+                endPos = p2;
+            } else if (q2 > 0 && q1 < 0) {
+                startPos = p2;
+                endPos = p1;
+            } else {
+                // 同号或零，简单处理：从电量大的出发
+                if (Math.abs(q1) > Math.abs(q2)) {
+                    startPos = p1;
+                    endPos = p2;
+                } else {
+                    startPos = p2;
+                    endPos = p1;
+                }
+            }
+            
+            const startRadius = 0.9;
+            const numLines = 30;
+            const steps = 90;
+            const stepSize = 0.14;
+            
+            for (let i = 0; i < numLines; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const sx = startPos.x + startRadius * Math.sin(phi) * Math.cos(theta);
+                const sy = startPos.y + startRadius * Math.sin(phi) * Math.sin(theta);
+                const sz = startPos.z + startRadius * Math.cos(phi);
+                
+                const points = [];
+                let current = new THREE.Vector3(sx, sy, sz);
+                points.push(current.clone());
+                
+                for (let s = 0; s < steps; s++) {
+                    const E = electricField(current, p1, p2, q1, q2);
+                    if (E.length() < 0.01) break;
+                    
+                    // 场的方向可能指向或远离，根据电荷符号决定步进方向
+                    const stepDir = E.clone().normalize();
+                    // 如果从正电荷出发，场方向向外；但从负电荷出发，场方向向内
+                    // 简单策略：始终沿着场方向，但如果太靠近另一电荷就终止
+                    const next = current.clone().add(stepDir.multiplyScalar(stepSize));
+                    
+                    if (next.distanceTo(endPos) < 0.9) {
+                        points.push(endPos.clone());
+                        break;
+                    }
+                    if (next.length() > 10) break;
+                    
+                    points.push(next.clone());
+                    current.copy(next);
+                }
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({ color: baseColor });
+                const line = new THREE.Line(geometry, material);
+                group.add(line);
+            }
+            return group;
+        }
+
+        // --- 初始生成 ---
+        let pointCloud = generatePointCloud(pos1, pos2, q1, q2, 0.22);
+        let fieldLinesGroup = generateFieldLines(pos1, pos2, q1, q2);
+        scene.add(pointCloud);
+        scene.add(fieldLinesGroup);
+
+        // 设置电场线透明度
+        fieldLinesGroup.children.forEach(line => {
+            line.material.transparent = true;
+            line.material.opacity = 0.75;
+        });
+
+        // --- 重新生成所有场 (用于电量或位置变化) ---
+        function regenerateFields() {
+            scene.remove(pointCloud);
+            scene.remove(fieldLinesGroup);
+            
+            const density = parseFloat(document.getElementById('density').value);
+            pointCloud = generatePointCloud(pos1, pos2, q1, q2, density);
+            fieldLinesGroup = generateFieldLines(pos1, pos2, q1, q2);
+            
+            // 应用当前设置
+            pointCloud.material.size = parseFloat(document.getElementById('pointSize').value);
+            pointCloud.material.opacity = parseFloat(document.getElementById('pointOpacity').value);
+            pointCloud.visible = document.getElementById('visPoints').checked;
+            
+            const lineOpacity = parseFloat(document.getElementById('lineOpacity').value);
+            fieldLinesGroup.children.forEach(line => {
+                line.material.transparent = true;
+                line.material.opacity = lineOpacity;
+            });
+            fieldLinesGroup.visible = document.getElementById('visLines').checked;
+            
+            scene.add(pointCloud);
+            scene.add(fieldLinesGroup);
+        }
+
+        // --- 拖拽控制器 ---
+        const dragControls = new DragControls([charge1, charge2], camera, renderer.domElement);
+        
+        dragControls.addEventListener('dragstart', function(event) {
+            controls.enabled = false;
+            event.object.material.emissive.setHex(0x333333);
+        });
+
+        dragControls.addEventListener('drag', function(event) {
+            // 更新电荷位置
+            const obj = event.object;
+            if (obj === charge1) {
+                pos1.copy(obj.position);
+                label1.position.copy(pos1.clone().add(new THREE.Vector3(0, 1.1, 0)));
+            } else {
+                pos2.copy(obj.position);
+                label2.position.copy(pos2.clone().add(new THREE.Vector3(0, 1.1, 0)));
+            }
+            
+            regenerateFields();
+        });
+
+        dragControls.addEventListener('dragend', function(event) {
+            controls.enabled = true;
+            event.object.material.emissive.setHex(0x000000);
+        });
+
+        // --- 控件事件 ---
+        const visCharge1 = document.getElementById('visCharge1');
+        const visCharge2 = document.getElementById('visCharge2');
+        const visPoints = document.getElementById('visPoints');
+        const visLines = document.getElementById('visLines');
+        const pointOpacity = document.getElementById('pointOpacity');
+        const pointOpacityVal = document.getElementById('pointOpacityVal');
+        const pointSize = document.getElementById('pointSize');
+        const pointSizeVal = document.getElementById('pointSizeVal');
+        const lineOpacity = document.getElementById('lineOpacity');
+        const lineOpacityVal = document.getElementById('lineOpacityVal');
+        const density = document.getElementById('density');
+        const densityVal = document.getElementById('densityVal');
+        const q1Slider = document.getElementById('q1');
+        const q1Val = document.getElementById('q1Val');
+        const q2Slider = document.getElementById('q2');
+        const q2Val = document.getElementById('q2Val');
+
+        visCharge1.addEventListener('change', (e) => {
+            charge1.visible = e.target.checked;
+            label1.visible = e.target.checked;
+        });
+        visCharge2.addEventListener('change', (e) => {
+            charge2.visible = e.target.checked;
+            label2.visible = e.target.checked;
+        });
+        visPoints.addEventListener('change', (e) => { pointCloud.visible = e.target.checked; });
+        visLines.addEventListener('change', (e) => { fieldLinesGroup.visible = e.target.checked; });
+
+        pointOpacity.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            pointOpacityVal.innerText = val.toFixed(2);
+            pointCloud.material.opacity = val;
+        });
+
+        pointSize.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            pointSizeVal.innerText = val.toFixed(2);
+            pointCloud.material.size = val;
+        });
+
+        lineOpacity.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            lineOpacityVal.innerText = val.toFixed(2);
+            fieldLinesGroup.children.forEach(line => {
+                line.material.opacity = val;
+            });
+        });
+
+        density.addEventListener('input', (e) => {
+            densityVal.innerText = parseFloat(e.target.value).toFixed(2);
+        });
+
+        // 电量调节
+        q1Slider.addEventListener('input', (e) => {
+            q1 = parseFloat(e.target.value);
+            q1Val.innerText = q1.toFixed(1);
+            label1.updateText(q1);
+            regenerateFields();
+        });
+
+        q2Slider.addEventListener('input', (e) => {
+            q2 = parseFloat(e.target.value);
+            q2Val.innerText = q2.toFixed(1);
+            label2.updateText(q2);
+            regenerateFields();
+        });
+
+        document.getElementById('resetView').addEventListener('click', () => {
+            camera.position.set(8, 5, 12);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        });
+
+        // 初始更新标签
+        label1.updateText(q1);
+        label2.updateText(q2);
+
+        // --- 动画 ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
