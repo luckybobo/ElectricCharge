@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>可调电荷量 · 可拖动电荷 · 等势面点云</title>
+    <title>电荷</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; background-color: #111; }
         #info {
@@ -104,12 +104,8 @@
     </style>
 </head>
 <body>
-    <div id="info">
-        <h2 style="margin:0 0 5px 0;">⚡ 可调电荷量 · 可拖动电荷</h2>
-        <p style="margin:0; color:#aaa;">拖动电荷 | 调节电量 | 等势面点云实时更新</p>
-    </div>
     <div id="controls">
-        <h3 style="margin:0 0 15px 0; text-align:center;">控制面板</h3>
+        <h3 style="margin:0 0 15px 0; text-align:center;">调节</h3>
         
         <div class="section-title">电荷可见性</div>
         <div class="control-item">
@@ -176,9 +172,8 @@
         </div>
 
         <button id="resetView">重置视角</button>
-        <p style="text-align:center; margin:10px 0 0 0; font-size:12px; color:#7aa5ff;">👆 按住电荷球体拖动 | 滑块实时更新场分布</p>
+        <p style="text-align:center; margin:10px 0 0 0; font-size:12px; color:#7aa5ff;">按住电荷球体拖动</p>
     </div>
-    <div class="note">电量可调 | 可拖动 | 实时更新</div>
 
     <!-- 引入 Three.js -->
     <script type="importmap">
